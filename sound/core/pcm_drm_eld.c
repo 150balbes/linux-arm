@@ -6,7 +6,6 @@
 #include <drm/drm_edid.h>
 #include <sound/pcm.h>
 #include <sound/pcm_drm_eld.h>
-#include <linux/hdmi.h>
 
 static const unsigned int eld_rates[] = {
 	32000,
@@ -18,40 +17,9 @@ static const unsigned int eld_rates[] = {
 	192000,
 };
 
-static unsigned int sad_format(const u8 *sad)
-{
-	return (sad[0] & 0x78) >> 3;
-}
-
 static unsigned int sad_max_channels(const u8 *sad)
 {
-	switch (sad_format(sad)) {
-	case HDMI_AUDIO_CODING_TYPE_AC3:
-	case HDMI_AUDIO_CODING_TYPE_DTS:
-	case HDMI_AUDIO_CODING_TYPE_EAC3:
-		return 2;
-	case HDMI_AUDIO_CODING_TYPE_DTS_HD:
-	case HDMI_AUDIO_CODING_TYPE_MLP:
-		return 8;
-	default:
-		return 1 + (sad[0] & 7);
-	}
-}
-
-static unsigned int sad_rate_mask(const u8 *sad)
-{
-	switch (sad_format(sad)) {
-	case HDMI_AUDIO_CODING_TYPE_AC3:
-	case HDMI_AUDIO_CODING_TYPE_DTS:
-		return 0x07; // 32-48kHz
-	case HDMI_AUDIO_CODING_TYPE_EAC3:
-		return 0x7f; // 32-192kHz
-	case HDMI_AUDIO_CODING_TYPE_DTS_HD:
-	case HDMI_AUDIO_CODING_TYPE_MLP:
-		return 0x60; // 176.4, 192kHz
-	default:
-		return sad[1] & 0x7f;
-	}
+	return 1 + (sad[0] & 7);
 }
 
 static int eld_limit_rates(struct snd_pcm_hw_params *params,
@@ -74,7 +42,7 @@ static int eld_limit_rates(struct snd_pcm_hw_params *params,
 			 * requested number of channels.
 			 */
 			if (c->min <= max_channels)
-				rate_mask |= sad_rate_mask(sad);
+				rate_mask |= sad[1];
 		}
 	}
 
@@ -102,7 +70,7 @@ static int eld_limit_channels(struct snd_pcm_hw_params *params,
 				rate_mask |= BIT(i);
 
 		for (i = drm_eld_sad_count(eld); i > 0; i--, sad += 3)
-			if (rate_mask & sad_rate_mask(sad))
+			if (rate_mask & sad[1])
 				t.max = max(t.max, sad_max_channels(sad));
 	}
 

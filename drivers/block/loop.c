@@ -765,6 +765,24 @@ out_err:
 	return error;
 }
 
+/*
+ * for AUFS
+ * no get/put for file.
+ */
+struct file *loop_backing_file(struct super_block *sb)
+{
+	struct file *ret;
+	struct loop_device *l;
+
+	ret = NULL;
+	if (MAJOR(sb->s_dev) == LOOP_MAJOR) {
+		l = sb->s_bdev->bd_disk->private_data;
+		ret = l->lo_backing_file;
+	}
+	return ret;
+}
+EXPORT_SYMBOL_GPL(loop_backing_file);
+
 /* loop sysfs attributes */
 
 static ssize_t loop_attr_show(struct device *dev, char *page,
@@ -1223,6 +1241,9 @@ static int __loop_clr_fd(struct loop_device *lo, bool release)
 		err = -EINVAL;
 		goto out_unlock;
 	}
+
+	if (test_bit(QUEUE_FLAG_WC, &lo->lo_queue->queue_flags))
+		blk_queue_write_cache(lo->lo_queue, false, false);
 
 	/* freeze request queue during the transition */
 	blk_mq_freeze_queue(lo->lo_queue);

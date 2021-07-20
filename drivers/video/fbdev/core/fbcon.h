@@ -62,7 +62,7 @@ struct fbcon_ops {
 	void (*clear_margins)(struct vc_data *vc, struct fb_info *info,
 			      int color, int bottom_only);
 	void (*cursor)(struct vc_data *vc, struct fb_info *info, int mode,
-		       int fg, int bg);
+		       int softback_lines, int fg, int bg);
 	int  (*update_start)(struct fb_info *info);
 	int  (*rotate_font)(struct fb_info *info, struct vc_data *vc);
 	struct fb_var_screeninfo var;  /* copy of the current fb_var_screeninfo */
@@ -208,6 +208,11 @@ static inline int attr_col_ec(int shift, struct vc_data *vc,
 #define SCROLL_REDRAW	   0x004
 #define SCROLL_PAN_REDRAW  0x005
 
+#ifdef CONFIG_BOOTSPLASH
+extern void fbcon_set_dummyops(struct fbcon_ops *ops);
+#else /* CONFIG_BOOTSPLASH */
+#define fbcon_set_dummyops(x)
+#endif /* CONFIG_BOOTSPLASH */
 #ifdef CONFIG_FB_TILEBLITTING
 extern void fbcon_set_tileops(struct vc_data *vc, struct fb_info *info);
 #endif
